@@ -84,6 +84,9 @@ return {
         },
     },
     misc = {
+        dictionary = {
+            chaos_config_ChaosSuits = "Chaos suits",
+        },
         suits_singular = {
             chaos_smiles = "Smiles",
             chaos_bananas = "Bananas",

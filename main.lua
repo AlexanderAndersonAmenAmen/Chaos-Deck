@@ -1,4 +1,5 @@
 CHAOSDECK = CHAOSDECK or {}
+CHAOSDECK.config = SMODS.current_mod.config or { enableChaosSuits = false }
 
 function CHAOSDECK.pack(...)
     return { n = select('#', ...), ... }
@@ -36,6 +37,58 @@ if G and G.C then G.C.CHAOS_ABILITIES = SMODS.Gradients.chaos_abilities end
 SMODS.Atlas({ key = "SUITS", path = "SUITS.png", px = 71, py = 95 })
 SMODS.Atlas({ key = "SUITS_UI", path = "SUITS_UI.png", px = 18, py = 18 })
 SMODS.Atlas({ key = "Extras", path = "EHD.png", px = 71, py = 95 })
+SMODS.Atlas({ key = "Consumables", path = "THD.png", px = 71, py = 95 })
+
+local function chaos_config_toggle_row(label, config_key)
+    return {
+        n = G.UIT.R,
+        config = { padding = 0, align = "cm", minh = 0.28 },
+        nodes = {
+            {
+                n = G.UIT.C,
+                config = { align = "l", padding = 0, minh = 0.1, minw = 6, maxw = 6 },
+                nodes = {
+                    { n = G.UIT.T, config = { text = label, scale = 0.4, colour = G.C.UI.TEXT_LIGHT } },
+                },
+            },
+            {
+                n = G.UIT.C,
+                config = { align = "c", padding = 0, minw = 1.2, maxw = 1.2 },
+                nodes = {
+                    create_toggle({
+                        col = true,
+                        label = "",
+                        scale = 1,
+                        w = 0,
+                        shadow = true,
+                        ref_table = CHAOSDECK.config,
+                        ref_value = config_key,
+                    }),
+                },
+            },
+        },
+    }
+end
+
+SMODS.current_mod.config_tab = function()
+    return {
+        n = G.UIT.ROOT,
+        config = {
+            align = "tm",
+            padding = 0.05,
+            minw = 8,
+            minh = 2,
+            colour = G.C.BLACK,
+            r = 0.1,
+            hover = true,
+            shadow = true,
+            emboss = 0.05,
+        },
+        nodes = {
+            chaos_config_toggle_row(localize("chaos_config_ChaosSuits"), "enableChaosSuits"),
+        },
+    }
+end
 
 assert(SMODS.load_file("decks/chaos.lua"))()
 

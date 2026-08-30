@@ -22,14 +22,41 @@ times = 1
 [patches.pattern]
 target = '=[SMODS _ "src/overrides.lua"]'
 pattern = '''
+	for _, suit in ipairs(suit_map) do
+		if suit_counts[suit] == 0 and SMODS.Suits[suit].in_pool and not SMODS.add_to_pool(SMODS.Suits[suit],{rank=''}) then
+			hidden_suits[suit] = true
+		end
+	end
+'''
+position = "after"
+payload = '''
+	if CHAOSDECK and CHAOSDECK.hide_unused_chaos_preview_suits then
+		CHAOSDECK.hide_unused_chaos_preview_suits(hidden_suits, suit_counts)
+	end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
 	for j = 1, #visible_suit do
 		if (j >= 1 and j <= 4) or num_suits <= 4 then
 '''
 position = "at"
 payload = '''
-	local chaos_deck_view = CHAOSDECK and ((CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active()) or (CHAOSDECK.has_chaos_suit_in_list and CHAOSDECK.has_chaos_suit_in_list(visible_suit))) or false
+	local chaos_suits_per_page = 4
+	local chaos_chaos_view = CHAOSDECK and CHAOSDECK.is_chaos_deck and CHAOSDECK.is_chaos_deck() or false
+	local chaos_chaos_config_view = CHAOSDECK and CHAOSDECK.is_chaos_config_view_active and CHAOSDECK.is_chaos_config_view_active(visible_suit) or false
 	for j = 1, #visible_suit do
-		if not chaos_deck_view and ((j >= 1 and j <= 4) or num_suits <= 4) then
+		local chaos_show_suit
+		if CHAOSDECK and CHAOSDECK.chaos_view_should_render_initial_suit then
+			chaos_show_suit = CHAOSDECK.chaos_view_should_render_initial_suit(visible_suit[j], j, num_suits, chaos_suits_per_page, visible_suit)
+		else
+			chaos_show_suit = (j >= 1 and j <= chaos_suits_per_page) or num_suits <= chaos_suits_per_page
+		end
+		if chaos_show_suit then
 '''
 match_indent = false
 times = 1
@@ -43,12 +70,14 @@ pattern = '''
 '''
 position = "before"
 payload = '''
-	if chaos_deck_view and CHAOSDECK and CHAOSDECK.append_chaos_view_deck_rows then
-		CHAOSDECK.append_chaos_view_deck_rows(deck_tables, SUITS, unplayed_only)
+	if chaos_chaos_view and CHAOSDECK and CHAOSDECK.append_chaos_view_deck_rows then
+		CHAOSDECK.append_chaos_view_deck_rows(deck_tables, SUITS, unplayed_only or view_deck_unplayed_only)
+	elseif chaos_chaos_config_page and CHAOSDECK and CHAOSDECK.append_chaos_config_view_deck_rows then
+		CHAOSDECK.append_chaos_config_view_deck_rows(deck_tables, SUITS, unplayed_only or view_deck_unplayed_only, visible_suit, args and args.cycle_config and args.cycle_config.current_option)
 	end
 '''
 match_indent = false
-times = 1
+times = 2
 
 [[patches]]
 [patches.pattern]
@@ -58,7 +87,7 @@ pattern = '''
 '''
 position = "at"
 payload = '''
-	local suits_per_row = chaos_deck_view and 5 or 2
+	local suits_per_row = chaos_chaos_view and 5 or 2
 '''
 match_indent = false
 times = 1
@@ -66,10 +95,17 @@ times = 1
 [[patches]]
 [patches.pattern]
 target = '=[SMODS _ "src/overrides.lua"]'
-pattern = '''while i <= math.min(4, #visible_suit) do'''
+pattern = '''
+	while i <= math.min(4, #visible_suit) do
+		if not hidden_suits[visible_suit[i]] then
+'''
 position = "at"
-payload = '''while i <= math.min(chaos_deck_view and #visible_suit or 4, #visible_suit) do'''
-match_indent = true
+payload = '''
+	local chaos_initial_suit_limit = chaos_chaos_view and #visible_suit or (chaos_chaos_config_view and #visible_suit or math.min(chaos_suits_per_page, #visible_suit))
+	while i <= chaos_initial_suit_limit do
+		if not hidden_suits[visible_suit[i]] and not (chaos_chaos_config_view and CHAOSDECK and CHAOSDECK.is_chaos_suit_key and CHAOSDECK.is_chaos_suit_key(visible_suit[i])) then
+'''
+match_indent = false
 times = 1
 
 [[patches]]
@@ -77,7 +113,7 @@ times = 1
 target = '=[SMODS _ "src/overrides.lua"]'
 pattern = '''#visible_suit > 4 and {n = G.UIT.R'''
 position = "at"
-payload = '''(not chaos_deck_view and #visible_suit > 4) and {n = G.UIT.R'''
+payload = '''((CHAOSDECK and CHAOSDECK.chaos_view_show_page_cycle and CHAOSDECK.chaos_view_show_page_cycle(visible_suit, chaos_suits_per_page)) or (not CHAOSDECK and #visible_suit > chaos_suits_per_page)) and {n = G.UIT.R'''
 match_indent = true
 times = 1
 
@@ -85,9 +121,65 @@ times = 1
 [patches.pattern]
 target = '=[SMODS _ "src/overrides.lua"]'
 pattern = '''
+	local deck_start_index = (args.cycle_config.current_option - 1) * 4 + 1
+	local deck_end_index = math.min(deck_start_index + 4 - 1, #visible_suit)
+'''
+position = "at"
+payload = '''
+	local chaos_suits_per_page = 4
+	local chaos_chaos_config_view = CHAOSDECK and CHAOSDECK.is_chaos_config_view_active and CHAOSDECK.is_chaos_config_view_active(visible_suit) or false
+	local chaos_chaos_config_page = CHAOSDECK and CHAOSDECK.chaos_config_page_two and CHAOSDECK.chaos_config_page_two(visible_suit, args.cycle_config.current_option) or false
+	local deck_start_index = (args.cycle_config.current_option - 1) * chaos_suits_per_page + 1
+	local deck_end_index = math.min(deck_start_index + chaos_suits_per_page - 1, #visible_suit)
+	if chaos_chaos_config_view then
+		if chaos_chaos_config_page then
+			deck_start_index, deck_end_index = 1, 0
+		else
+			deck_start_index, deck_end_index = 1, #visible_suit
+		end
+	end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+		if SUITS[visible_suit[j]][1] and (j >= deck_start_index and j <= deck_end_index) then
+'''
+position = "at"
+payload = '''
+		if SUITS[visible_suit[j]][1] and (j >= deck_start_index and j <= deck_end_index)
+			and not (chaos_chaos_config_view and CHAOSDECK and CHAOSDECK.is_chaos_suit_key and CHAOSDECK.is_chaos_suit_key(visible_suit[j])) then
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
 	for _, suit in ipairs(suit_map) do
-		if SUITS[suit][1] then
-			table.insert(visible_suit, suit)
+		if suit_tallies[suit] == 0 and SMODS.Suits[suit].in_pool and not SMODS.add_to_pool(SMODS.Suits[suit], {rank=''}) then
+			hidden_suits[suit] = true
+		end
+	end
+'''
+position = "after"
+payload = '''
+	if CHAOSDECK and CHAOSDECK.hide_unused_chaos_preview_suits then CHAOSDECK.hide_unused_chaos_preview_suits(hidden_suits, suit_tallies) end
+'''
+match_indent = false
+times = 2
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	for j = 1, #suit_map do
+		if SUITS[suit_map[j]][1] then
+			table.insert(visible_suit, suit_map[j])
 		end
 	end
 '''
@@ -98,7 +190,7 @@ payload = '''
 	end
 '''
 match_indent = false
-times = 1
+times = 2
 
 [[patches]]
 [patches.pattern]
@@ -108,7 +200,7 @@ pattern = '''
 '''
 position = "at"
 payload = '''
-		if #n_nodes == (chaos_deck_view and (#temp_list == 0 and 4 or #temp_list == 1 and 5 or 4) or suits_per_row) then
+		if #n_nodes == (chaos_chaos_view and (#temp_list == 0 and 4 or #temp_list == 1 and 5 or 4) or suits_per_row) then
 '''
 match_indent = false
 times = 1
@@ -124,10 +216,51 @@ position = "at"
 payload = '''
 G.FUNCS.your_suits_page = function(args)
 	if not args or not args.cycle_config then return end
-	if CHAOSDECK and CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active() then return end
+	if CHAOSDECK and CHAOSDECK.is_chaos_deck and CHAOSDECK.is_chaos_deck() then return end
 '''
 match_indent = false
 times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	while i <= deck_end_index do
+		if not hidden_suits[visible_suit[i]] then
+'''
+position = "at"
+payload = '''
+	while i <= deck_end_index do
+		if not hidden_suits[visible_suit[i]] and not (chaos_chaos_config_view and CHAOSDECK and CHAOSDECK.is_chaos_suit_key and CHAOSDECK.is_chaos_suit_key(visible_suit[i])) then
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	for _, v in ipairs(temp_list) do
+		local n = {n = G.UIT.R, config = {align = "cm", minh = 0.05, padding = 0.05}, nodes = v}
+		table.insert(tally_ui, n)
+	end
+
+	local suit_options = {}
+'''
+position = "at"
+payload = '''
+	for _, v in ipairs(temp_list) do
+		local n = {n = G.UIT.R, config = {align = "cm", minh = 0.05, padding = 0.05}, nodes = v}
+		table.insert(tally_ui, n)
+	end
+	if chaos_chaos_config_page and CHAOSDECK and CHAOSDECK.append_chaos_config_tally_rows then
+		CHAOSDECK.append_chaos_config_tally_rows(tally_ui, suit_tallies, mod_suit_tallies, flip_col, visible_suit, args.cycle_config.current_option)
+	end
+
+	local suit_options = {}
+'''
+match_indent = false
+times = 2
 
 [[patches]]
 [patches.pattern]
@@ -137,10 +270,11 @@ pattern = '''
 '''
 position = "at"
 payload = '''
-	for i = 1, (chaos_deck_view and 1 or math.ceil(#visible_suit / 4)) do
+	local chaos_page_count = (CHAOSDECK and CHAOSDECK.chaos_view_page_count and CHAOSDECK.chaos_view_page_count(visible_suit, chaos_suits_per_page)) or math.ceil(#visible_suit / chaos_suits_per_page)
+	for i = 1, chaos_page_count do
 '''
 match_indent = false
-times = 1
+times = 2
 
 [[patches]]
 [patches.pattern]
@@ -152,10 +286,10 @@ pattern = '''
 position = "at"
 payload = '''
 		table.insert(suit_options,
-			localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(chaos_deck_view and 1 or math.ceil(#visible_suit / 4)))
+			localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(chaos_page_count))
 '''
 match_indent = false
-times = 1
+times = 2
 
 [[patches]]
 [patches.pattern]
