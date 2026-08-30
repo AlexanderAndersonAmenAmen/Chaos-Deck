@@ -1,0 +1,38 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 30
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+        local _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('sigil'))
+'''
+position = "at"
+payload = '''
+        local chaos_sigil_suits = CHAOSDECK and CHAOSDECK.get_pollable_suit_keys and CHAOSDECK.get_pollable_suit_keys('chaos_sigil') or {}
+        local _suit = #chaos_sigil_suits > 0 and pseudorandom_element(chaos_sigil_suits, pseudoseed('sigil')) or pseudorandom_element({'Spades','Hearts','Diamonds','Clubs'}, pseudoseed('sigil'))
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+                local suit_prefix = _suit..'_'
+                local rank_suffix = card.base.id < 10 and tostring(card.base.id) or
+                                    card.base.id == 10 and 'T' or card.base.id == 11 and 'J' or
+                                    card.base.id == 12 and 'Q' or card.base.id == 13 and 'K' or
+                                    card.base.id == 14 and 'A'
+                card:set_base(G.P_CARDS[suit_prefix..rank_suffix])
+'''
+position = "at"
+payload = '''
+                if SMODS and type(SMODS.change_base) == 'function' then
+                    SMODS.change_base(card, _suit, nil)
+                end
+'''
+match_indent = false
+times = 1

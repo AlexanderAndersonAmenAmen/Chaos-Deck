@@ -1,0 +1,18 @@
+{
+  "id": "ChaosDeckStandalone",
+  "name": "Chaos Deck",
+  "display_name": "Chaos Deck",
+  "author": [
+    "Kars"
+  ],
+  "description": "Chaos",
+  "prefix": "chaos",
+  "main_file": "main.lua",
+  "priority": 0,
+  "version": "1.0.0",
+  "dependencies": [
+    "Steamodded (>=1.0.0~BETA-1620a)"
+  ],
+  "icon_path": "chaos_icon.png",
+  "icon_width": 32
+}

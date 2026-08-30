@@ -1,0 +1,177 @@
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 25
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+local rank_name_mapping = {}
+'''
+position = "before"
+payload = '''
+if CHAOSDECK and CHAOSDECK.prepare_chaos_full_preview_suit_map then
+    CHAOSDECK.prepare_chaos_full_preview_suit_map(suit_map)
+end
+'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	for j = 1, #visible_suit do
+		if (j >= 1 and j <= 4) or num_suits <= 4 then
+'''
+position = "at"
+payload = '''
+	local chaos_deck_view = CHAOSDECK and ((CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active()) or (CHAOSDECK.has_chaos_suit_in_list and CHAOSDECK.has_chaos_suit_in_list(visible_suit))) or false
+	for j = 1, #visible_suit do
+		if not chaos_deck_view and ((j >= 1 and j <= 4) or num_suits <= 4) then
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	if not next(deck_tables) then
+		local view_deck = CardArea(
+'''
+position = "before"
+payload = '''
+	if chaos_deck_view and CHAOSDECK and CHAOSDECK.append_chaos_view_deck_rows then
+		CHAOSDECK.append_chaos_view_deck_rows(deck_tables, SUITS, unplayed_only)
+	end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	local suits_per_row = 2
+'''
+position = "at"
+payload = '''
+	local suits_per_row = chaos_deck_view and 5 or 2
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''while i <= math.min(4, #visible_suit) do'''
+position = "at"
+payload = '''while i <= math.min(chaos_deck_view and #visible_suit or 4, #visible_suit) do'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''#visible_suit > 4 and {n = G.UIT.R'''
+position = "at"
+payload = '''(not chaos_deck_view and #visible_suit > 4) and {n = G.UIT.R'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	for _, suit in ipairs(suit_map) do
+		if SUITS[suit][1] then
+			table.insert(visible_suit, suit)
+		end
+	end
+'''
+position = "after"
+payload = '''
+	if CHAOSDECK and CHAOSDECK.prepare_chaos_view_suit_order then
+		CHAOSDECK.prepare_chaos_view_suit_order(visible_suit)
+	end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+		if #n_nodes == suits_per_row then
+'''
+position = "at"
+payload = '''
+		if #n_nodes == (chaos_deck_view and (#temp_list == 0 and 4 or #temp_list == 1 and 5 or 4) or suits_per_row) then
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+G.FUNCS.your_suits_page = function(args)
+	if not args or not args.cycle_config then return end
+'''
+position = "at"
+payload = '''
+G.FUNCS.your_suits_page = function(args)
+	if not args or not args.cycle_config then return end
+	if CHAOSDECK and CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active() then return end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+	for i = 1, math.ceil(#visible_suit / 4) do
+'''
+position = "at"
+payload = '''
+	for i = 1, (chaos_deck_view and 1 or math.ceil(#visible_suit / 4)) do
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+		table.insert(suit_options,
+			localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(math.ceil(#visible_suit / 4)))
+'''
+position = "at"
+payload = '''
+		table.insert(suit_options,
+			localize('k_page') .. ' ' .. tostring(i) .. '/' .. tostring(chaos_deck_view and 1 or math.ceil(#visible_suit / 4)))
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = '=[SMODS _ "src/overrides.lua"]'
+pattern = '''
+			if v:is_suit(kk) then mod_suit_counts[kk] = mod_suit_counts[kk] + 1 end
+'''
+position = "at"
+payload = '''
+			local chaos_effective_suit
+			if CHAOSDECK and CHAOSDECK.chaos_deck_preview_is_suit then
+				chaos_effective_suit = CHAOSDECK.chaos_deck_preview_is_suit(v, kk)
+			else
+				chaos_effective_suit = v:is_suit(kk)
+			end
+			if chaos_effective_suit then mod_suit_counts[kk] = mod_suit_counts[kk] + 1 end
+'''
+match_indent = false
+times = 1
