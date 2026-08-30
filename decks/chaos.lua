@@ -637,6 +637,97 @@ function CHAOSDECK.get_pollable_suit_keys(source, excluded)
     return out
 end
 
+function CHAOSDECK.poll_suit(source, excluded, seed_key)
+    local suits = CHAOSDECK.get_pollable_suit_keys(source, excluded)
+    if #suits == 0 then
+        for _, suit in ipairs({ 'Spades', 'Hearts', 'Diamonds', 'Clubs' }) do
+            if suit ~= excluded then suits[#suits + 1] = suit end
+        end
+    end
+    if #suits == 0 then return nil end
+    return pseudorandom_element(suits, pseudoseed(seed_key or source or 'chaos_suit'))
+end
+
+function CHAOSDECK.get_front_for_suit_rank(suit_key, rank_card_key)
+    if not (G and G.P_CARDS and suit_key and rank_card_key) then return nil end
+    local direct = G.P_CARDS[tostring(suit_key) .. '_' .. tostring(rank_card_key)]
+    if direct then return direct end
+    local suit = SMODS and SMODS.Suits and SMODS.Suits[suit_key]
+    if suit and suit.card_key then
+        return G.P_CARDS[tostring(suit.card_key) .. '_' .. tostring(rank_card_key)]
+    end
+end
+
+local function chaos_apply_generated_suit(card, source, seed_key)
+    if not (card and card.base and SMODS and type(SMODS.change_base) == 'function') then return card end
+    local active = chaos_suit_pool_enabled({ source = source })
+    if not active and not CHAOS_SUIT_SET[card.base.suit] then return card end
+    local suit = CHAOSDECK.poll_suit(source, nil, seed_key)
+    if suit and suit ~= card.base.suit then
+        SMODS.change_base(card, suit, nil)
+    end
+    return card
+end
+
+if type(create_card) == 'function' and not CHAOSDECK._chaos_create_card_suit_hook then
+    local chaos_create_card_ref = create_card
+    function create_card(_type, area, legendary, rarity, skip_materialize, soulable, forced_key, key_append, ...)
+        local front_was_forced = SMODS and SMODS.set_create_card_front ~= nil
+        local card = chaos_create_card_ref(_type, area, legendary, rarity, skip_materialize, soulable, forced_key, key_append, ...)
+        if not front_was_forced and (_type == 'Base' or _type == 'Enhanced') then
+            chaos_apply_generated_suit(card, 'chaos_create_card_' .. tostring(key_append or _type), 'chaos_front_' .. tostring(key_append or _type))
+        end
+        return card
+    end
+    CHAOSDECK._chaos_create_card_suit_hook = true
+end
+
+if SMODS and type(SMODS.create_card) == 'function' and not CHAOSDECK._chaos_smods_create_card_suit_hook then
+    local chaos_smods_create_card_ref = SMODS.create_card
+    function SMODS.create_card(args)
+        local card = chaos_smods_create_card_ref(args)
+        local set = type(args) == 'table' and args.set or nil
+        local playing_card_request = set == 'Playing Card' or set == 'Base' or set == 'Enhanced'
+        if playing_card_request and type(args) == 'table' and args.front == nil and args.suit == nil then
+            chaos_apply_generated_suit(card, 'chaos_smods_create_' .. tostring(args.key_append or set), 'chaos_smods_front_' .. tostring(args.key_append or set))
+        end
+        return card
+    end
+    CHAOSDECK._chaos_smods_create_card_suit_hook = true
+end
+
+if type(create_playing_card) == 'function' and not CHAOSDECK._chaos_create_playing_card_suit_hook then
+    local chaos_create_playing_card_ref = create_playing_card
+    function create_playing_card(card_init, area, skip_materialize, silent, colours, ...)
+        local card = chaos_create_playing_card_ref(card_init, area, skip_materialize, silent, colours, ...)
+        if type(card_init) == 'table' and card_init.front == nil then
+            chaos_apply_generated_suit(card, 'chaos_create_playing_card', 'chaos_create_playing_card')
+        end
+        return card
+    end
+    CHAOSDECK._chaos_create_playing_card_suit_hook = true
+end
+
+if type(reset_ancient_card) == 'function' and not CHAOSDECK._chaos_ancient_suit_hook then
+    local chaos_reset_ancient_card_ref = reset_ancient_card
+    function reset_ancient_card(...)
+        if not chaos_suit_pool_enabled({ source = 'chaos_ancient' }) then
+            return chaos_reset_ancient_card_ref(...)
+        end
+        if not (G and G.GAME and G.GAME.current_round and G.GAME.current_round.ancient_card) then
+            return chaos_reset_ancient_card_ref(...)
+        end
+        local current = G.GAME.current_round.ancient_card.suit
+        local suit = CHAOSDECK.poll_suit('chaos_ancient', current, 'anc' .. tostring(G.GAME.round_resets and G.GAME.round_resets.ante or 0))
+        if suit then
+            G.GAME.current_round.ancient_card.suit = suit
+            return
+        end
+        return chaos_reset_ancient_card_ref(...)
+    end
+    CHAOSDECK._chaos_ancient_suit_hook = true
+end
+
 local function selected_chaos_back()
     if not (G and G.GAME) then return false end
     if G.GAME.modifiers and G.GAME.modifiers.chaos_chaos_deck then return true end

@@ -36,3 +36,103 @@ payload = '''
 '''
 match_indent = false
 times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+                    local suit_prefix = string.sub(card.base.suit, 1, 1)..'_'
+                    local rank_suffix = card.base.id == 14 and 2 or math.min(card.base.id+1, 14)
+                    if rank_suffix < 10 then rank_suffix = tostring(rank_suffix)
+                    elseif rank_suffix == 10 then rank_suffix = 'T'
+                    elseif rank_suffix == 11 then rank_suffix = 'J'
+                    elseif rank_suffix == 12 then rank_suffix = 'Q'
+                    elseif rank_suffix == 13 then rank_suffix = 'K'
+                    elseif rank_suffix == 14 then rank_suffix = 'A'
+                    end
+                    card:set_base(G.P_CARDS[suit_prefix..rank_suffix])
+'''
+position = "at"
+payload = '''
+                    local rank_suffix = card.base.id == 14 and 2 or math.min(card.base.id+1, 14)
+                    if rank_suffix < 10 then rank_suffix = tostring(rank_suffix)
+                    elseif rank_suffix == 10 then rank_suffix = 'T'
+                    elseif rank_suffix == 11 then rank_suffix = 'J'
+                    elseif rank_suffix == 12 then rank_suffix = 'Q'
+                    elseif rank_suffix == 13 then rank_suffix = 'K'
+                    elseif rank_suffix == 14 then rank_suffix = 'A'
+                    end
+                    local chaos_front = CHAOSDECK and CHAOSDECK.get_front_for_suit_rank and CHAOSDECK.get_front_for_suit_rank(card.base.suit, rank_suffix)
+                    if chaos_front then card:set_base(chaos_front) end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+                    local suit_prefix = string.sub(card.base.suit, 1, 1)..'_'
+                    local rank_suffix =_rank
+                    card:set_base(G.P_CARDS[suit_prefix..rank_suffix])
+'''
+position = "at"
+payload = '''
+                    local chaos_front = CHAOSDECK and CHAOSDECK.get_front_for_suit_rank and CHAOSDECK.get_front_for_suit_rank(card.base.suit, _rank)
+                    if chaos_front then card:set_base(chaos_front) end
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+                        if self.ability.name == 'Familiar' then
+                            _rank = pseudorandom_element({'J', 'Q', 'K'}, pseudoseed('familiar_create'))
+                            _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('familiar_create'))
+                        elseif self.ability.name == 'Grim' then
+                            _rank = 'A'
+                            _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('grim_create'))
+                        elseif self.ability.name == 'Incantation' then
+                            _rank = pseudorandom_element({'2', '3', '4', '5', '6', '7', '8', '9', 'T'}, pseudoseed('incantation_create'))
+                            _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('incantation_create'))
+                        end
+                        _suit = _suit or 'S'; _rank = _rank or 'A'
+'''
+position = "at"
+payload = '''
+                        if self.ability.name == 'Familiar' then
+                            _rank = pseudorandom_element({'J', 'Q', 'K'}, pseudoseed('familiar_create'))
+                            _suit = CHAOSDECK and CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active()
+                                and CHAOSDECK.poll_suit('chaos_familiar', nil, 'familiar_create')
+                                or pseudorandom_element({'S','H','D','C'}, pseudoseed('familiar_create'))
+                        elseif self.ability.name == 'Grim' then
+                            _rank = 'A'
+                            _suit = CHAOSDECK and CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active()
+                                and CHAOSDECK.poll_suit('chaos_grim', nil, 'grim_create')
+                                or pseudorandom_element({'S','H','D','C'}, pseudoseed('grim_create'))
+                        elseif self.ability.name == 'Incantation' then
+                            _rank = pseudorandom_element({'2', '3', '4', '5', '6', '7', '8', '9', 'T'}, pseudoseed('incantation_create'))
+                            _suit = CHAOSDECK and CHAOSDECK.is_chaos_run_active and CHAOSDECK.is_chaos_run_active()
+                                and CHAOSDECK.poll_suit('chaos_incantation', nil, 'incantation_create')
+                                or pseudorandom_element({'S','H','D','C'}, pseudoseed('incantation_create'))
+                        end
+                        _suit = _suit or 'S'; _rank = _rank or 'A'
+'''
+match_indent = false
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+                        create_playing_card({front = G.P_CARDS[_suit..'_'.._rank], center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))}, G.hand, nil, i ~= 1, {G.C.SECONDARY_SET.Spectral})
+'''
+position = "at"
+payload = '''
+                        local chaos_front = CHAOSDECK and CHAOSDECK.get_front_for_suit_rank and CHAOSDECK.get_front_for_suit_rank(_suit, _rank) or G.P_CARDS['S_'.._rank]
+                        create_playing_card({front = chaos_front, center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))}, G.hand, nil, i ~= 1, {G.C.SECONDARY_SET.Spectral})
+'''
+match_indent = false
+times = 1
