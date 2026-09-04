@@ -23,8 +23,10 @@ return {
             chaos_suit_wraiths = {
                 name = "Wraiths",
                 text = {
-                    "Debuffs cards",
-                    "{C:attention}adjacent{} to this",
+                    "Retrigger {C:attention}1{} time",
+                    "Debuffs {C:attention}adjacent{}",
+                    "cards with a",
+					"different suit"
                 },
             },
             chaos_suit_dices = {
@@ -76,9 +78,10 @@ return {
             chaos_suit_free_parking_spots = {
                 name = "Parking Spots",
                 text = {
-                    "{C:green}#1# in #2#{} chance to",
-                    "give {C:money}$1{} when a hand",
-                    "is played while held",
+                    "{C:green}#1# in #2#{} chance for",
+                    "{C:money}$1{} per hand played",
+                    "while this card",
+					"stays in hand"
                 },
             },
         },

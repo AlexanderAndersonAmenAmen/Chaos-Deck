@@ -296,6 +296,12 @@ function CHAOSDECK.calculate_chaos_suits(context)
         end
     end
 
+    if context.repetition and context.cardarea == G.play and context.other_card
+        and active_suit(context.other_card, CHAOS_SUIT.wraiths)
+    then
+        return { repetitions = 1 }
+    end
+
     if context.individual and context.cardarea == G.play and context.other_card and not context.repetition then
         local card = context.other_card
 
@@ -354,7 +360,8 @@ function CHAOSDECK.calculate_chaos_suits(context)
         and SMODS and type(SMODS.pseudorandom_probability) == 'function'
         and SMODS.pseudorandom_probability(context.other_card, 'chaos_chaos_free_parking', 1, 2)
     then
-        return { dollars = 1 }
+        SMODS.calculate_effect({ dollars = 1 }, context.other_card)
+        return
     end
 end
 
@@ -391,7 +398,9 @@ local function chaos_build_wraith_state(area)
     local has_wraith = false
     for i, card in ipairs(cards) do
         if base_suit(card, CHAOS_SUIT.wraiths) then has_wraith = true end
-        if base_suit(cards[i - 1], CHAOS_SUIT.wraiths) or base_suit(cards[i + 1], CHAOS_SUIT.wraiths) then
+        local beside_wraith = base_suit(cards[i - 1], CHAOS_SUIT.wraiths)
+            or base_suit(cards[i + 1], CHAOS_SUIT.wraiths)
+        if beside_wraith and not base_suit(card, CHAOS_SUIT.wraiths) then
             adjacent[card] = true
         end
     end
