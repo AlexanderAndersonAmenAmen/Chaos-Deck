@@ -613,6 +613,44 @@ end
 local CHAOS_SUIT_SET = {}
 for _, suit_key in pairs(CHAOS_SUIT) do CHAOS_SUIT_SET[suit_key] = true end
 
+if type(create_UIBox_customize_deck) == 'function' and not CHAOSDECK._chaos_customize_deck_options_hook then
+    CHAOSDECK._chaos_customize_deck_options_hook = true
+    local create_UIBox_customize_deck_ref = create_UIBox_customize_deck
+    function create_UIBox_customize_deck(...)
+        local suit_class = SMODS and SMODS.Suit
+        local obj_list_ref = suit_class and suit_class.obj_list
+        local scoped_obj_list
+
+        if type(obj_list_ref) == 'function' then
+            scoped_obj_list = function(self, ...)
+                local results = CHAOSDECK.pack(obj_list_ref(self, ...))
+                local list = results[1]
+                if type(list) == 'table' then
+                    local filtered = {}
+                    for _, suit in ipairs(list) do
+                        local suit_key = suit and suit.key
+                        if not (suit_key and CHAOS_SUIT_SET[suit_key]) then
+                            filtered[#filtered + 1] = suit
+                        end
+                    end
+                    results[1] = filtered
+                end
+                return ((table and table.unpack) or unpack)(results, 1, results.n)
+            end
+            suit_class.obj_list = scoped_obj_list
+        end
+
+        local results = CHAOSDECK.pack(pcall(create_UIBox_customize_deck_ref, ...))
+
+        if suit_class and scoped_obj_list and suit_class.obj_list == scoped_obj_list then
+            suit_class.obj_list = obj_list_ref
+        end
+
+        if not results[1] then error(results[2], 0) end
+        return ((table and table.unpack) or unpack)(results, 2, results.n)
+    end
+end
+
 local CHAOS_TAROTS = {
     c_sun = {
         vanilla = 'Hearts',
